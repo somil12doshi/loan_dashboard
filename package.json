@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "homepage": "https://somildoshi12.github.io/loan-dashboard",
+  "homepage": "https://somil12doshi.github.io/loan_dashboard",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
