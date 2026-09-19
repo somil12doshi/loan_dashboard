@@ -5,6 +5,7 @@ export default function Navbar({ activeTab, onTabChange }) {
     { id: 'summary', label: 'Master Summary' },
     { id: 'jain', label: 'JAIN Trust' },
     { id: 'hdfc', label: 'HDFC' },
+    { id: 'staffing', label: 'Staffing' },
     { id: 'admin', label: 'Admin' },
   ];
 

@@ -5,6 +5,7 @@ import Background from './components/Background';
 import MasterSummary from './components/MasterSummary';
 import JainPage from './components/JainPage';
 import HdfcPage from './components/HdfcPage';
+import StaffingPage from './components/StaffingPage';
 import AdminPage from './components/AdminPage';
 import { DataProvider, useData } from './data/DataContext';
 import './index.css';
@@ -13,6 +14,7 @@ const pages = {
   summary: MasterSummary,
   jain: JainPage,
   hdfc: HdfcPage,
+  staffing: StaffingPage,
   admin: AdminPage,
 };
 

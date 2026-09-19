@@ -195,14 +195,20 @@ const FormulaCell = ({ value }) => (
 
 export default function AdminPage() {
   const { 
-    jain, hdfc, isDirty,
+    jain, hdfc, staffing, isDirty,
     isLoading, isSaving, isFirebaseConfigured,
-    updateJainRow, updateJainRowText, 
+    updateJainRow, updateJainRowText,
+    updateUsaRow, updateUsaRowText,
     updateHdfcRow, updateHdfcRowText,
     updateHdfcRepayment, updateHdfcRepaymentText,
     addHdfcRepayment, deleteHdfcRepayment,
     updateJainRepayment, updateJainRepaymentText,
     addJainRepayment, deleteJainRepayment,
+    updateUsaRepayment, updateUsaRepaymentText,
+    addUsaRepayment, deleteUsaRepayment,
+    updateStaffingRow, updateStaffingRowText,
+    updateStaffingRepayment, updateStaffingRepaymentText,
+    addStaffingRepayment, deleteStaffingRepayment,
     saveToLocalStorage,
     resetAll 
   } = useData();
@@ -278,7 +284,7 @@ export default function AdminPage() {
         </div>
         <div className="flex items-center gap-3">
           <button 
-            onClick={() => saveToLocalStorage(jain, hdfc)}
+            onClick={() => saveToLocalStorage(jain, hdfc, staffing)}
             disabled={!isDirty || isSaving}
             className={`px-5 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all duration-300 ${
               isDirty && !isSaving
@@ -291,10 +297,10 @@ export default function AdminPage() {
         </div>
       </div>
 
-      {/* JAIN EDITOR */}
+      {/* JAIN INDIA EDITOR */}
       <section className="space-y-4">
         <h3 className="text-sm font-bold uppercase tracking-widest text-cyan-400 flex items-center gap-2">
-          JAIN Trust Rows
+          🇮🇳 India Trust Rows (₹ INR)
         </h3>
         <div className="glass-card overflow-hidden">
           <div className="overflow-x-auto">
@@ -312,29 +318,76 @@ export default function AdminPage() {
                 </tr>
               </thead>
               <tbody>
-                {jain.rows.map((row, i) => (
+                {(jain.rows || []).filter(r => !r.trustName.includes('USA') && !r.trustName.includes('5000')).map((row, i) => {
+                  const actualIndex = jain.rows.findIndex(r => r.trustName === row.trustName);
+                  const idx = actualIndex >= 0 ? actualIndex : i;
+                  return (
+                    <tr key={i}>
+                      <td>
+                        <EditCell isText value={row.trustName} onSave={v => updateJainRowText(idx, 'trustName', v)} />
+                      </td>
+                      <td>
+                        <EditCell isText isDate value={row.disbursDate2024} onSave={v => updateJainRowText(idx, 'disbursDate2024', v)} />
+                      </td>
+                      <td>
+                        <EditCell value={row.amount2024} onSave={v => updateJainRow(idx, 'amount2024', v)} />
+                      </td>
+                      <td>
+                        <EditCell isText isDate value={row.disbursDate2025} onSave={v => updateJainRowText(idx, 'disbursDate2025', v)} />
+                      </td>
+                      <td>
+                        <EditCell value={row.amount2025} onSave={v => updateJainRow(idx, 'amount2025', v)} />
+                      </td>
+                      <td><FormulaCell value={row.total} /></td>
+                      <td>
+                        <EditCell isText isDate value={row.repaymentStart} onSave={v => updateJainRowText(idx, 'repaymentStart', v)} />
+                      </td>
+                      <td>
+                        <EditCell value={row.repaymentAmount} onSave={v => updateJainRow(idx, 'repaymentAmount', v)} />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      {/* USA EDITOR */}
+      <section className="space-y-4">
+        <h3 className="text-sm font-bold uppercase tracking-widest text-amber-400 flex items-center gap-2">
+          🇺🇸 USA Trust Rows ($ USD)
+        </h3>
+        <div className="glass-card overflow-hidden border border-amber-500/20">
+          <div className="overflow-x-auto">
+            <table className="loan-table">
+              <thead>
+                <tr>
+                  <th>Trust / Lender Name</th>
+                  <th>Disbursement Date</th>
+                  <th style={{ color: '#fbbf24' }}>Loan Amount ($)</th>
+                  <th>Repay Start</th>
+                  <th>Repay Amt ($)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(jain.usaRows || []).map((row, i) => (
                   <tr key={i}>
                     <td>
-                      <EditCell isText value={row.trustName} onSave={v => updateJainRowText(i, 'trustName', v)} />
+                      <EditCell isText value={row.trustName} onSave={v => updateUsaRowText(i, 'trustName', v)} />
                     </td>
                     <td>
-                      <EditCell isText isDate value={row.disbursDate2024} onSave={v => updateJainRowText(i, 'disbursDate2024', v)} />
+                      <EditCell isText isDate value={row.disbursDate2025 || row.disbursDate2024} onSave={v => updateUsaRowText(i, 'disbursDate2025', v)} />
                     </td>
                     <td>
-                      <EditCell value={row.amount2024} onSave={v => updateJainRow(i, 'amount2024', v)} />
+                      <EditCell value={row.amount2025 || row.total} onSave={v => updateUsaRow(i, 'amount2025', v)} />
                     </td>
                     <td>
-                      <EditCell isText isDate value={row.disbursDate2025} onSave={v => updateJainRowText(i, 'disbursDate2025', v)} />
+                      <EditCell isText isDate value={row.repaymentStart} onSave={v => updateUsaRowText(i, 'repaymentStart', v)} />
                     </td>
                     <td>
-                      <EditCell value={row.amount2025} onSave={v => updateJainRow(i, 'amount2025', v)} />
-                    </td>
-                    <td><FormulaCell value={row.total} /></td>
-                    <td>
-                      <EditCell isText isDate value={row.repaymentStart} onSave={v => updateJainRowText(i, 'repaymentStart', v)} />
-                    </td>
-                    <td>
-                      <EditCell value={row.repaymentAmount} onSave={v => updateJainRow(i, 'repaymentAmount', v)} />
+                      <EditCell value={row.repaymentAmount} onSave={v => updateUsaRow(i, 'repaymentAmount', v)} />
                     </td>
                   </tr>
                 ))}
@@ -447,11 +500,11 @@ export default function AdminPage() {
         </div>
       </section>
 
-      {/* JAIN REPAYMENTS EDITOR */}
+      {/* JAIN INDIA REPAYMENTS EDITOR */}
       <section className="space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-bold uppercase tracking-widest text-cyan-400 flex items-center gap-2">
-            JAIN Repayments
+            🇮🇳 India JAIN Repayments
           </h3>
           <button
             onClick={() => {
@@ -461,7 +514,7 @@ export default function AdminPage() {
             }}
             className="px-3 py-1.5 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-[10px] font-bold uppercase tracking-wider text-cyan-300 hover:bg-cyan-500/20 transition-all flex items-center gap-1.5"
           >
-            + Add JAIN Repayment
+            + Add India Repayment
           </button>
         </div>
         <div className="glass-card overflow-hidden">
@@ -509,7 +562,182 @@ export default function AdminPage() {
                 {(!jain.repayments || jain.repayments.length === 0) && (
                   <tr>
                     <td colSpan="4" className="text-center text-white/40 py-6 text-xs italic">
-                      No JAIN repayments logged. Click "+ Add JAIN Repayment" to log one.
+                      No India repayments logged. Click "+ Add India Repayment" to log one.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      {/* USA REPAYMENTS EDITOR */}
+      <section className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-bold uppercase tracking-widest text-amber-400 flex items-center gap-2">
+            🇺🇸 USA Repayments ($ USD)
+          </h3>
+          <button
+            onClick={() => {
+              const firstTrust = (jain.usaRows && jain.usaRows[0]?.trustName) || 'SMJV (USA $5000)';
+              const todayStr = toDisplayDate(new Date().toISOString().split('T')[0]);
+              addUsaRepayment(firstTrust, todayStr, 0);
+            }}
+            className="px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-[10px] font-bold uppercase tracking-wider text-amber-300 hover:bg-amber-500/20 transition-all flex items-center gap-1.5"
+          >
+            + Add USA Repayment
+          </button>
+        </div>
+        <div className="glass-card overflow-hidden border border-amber-500/20">
+          <div className="overflow-x-auto">
+            <table className="loan-table">
+              <thead>
+                <tr>
+                  <th>Trust / Lender Name</th>
+                  <th>Date</th>
+                  <th>Amount ($)</th>
+                  <th style={{ width: '10%', textAlign: 'center' }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(jain.usaRepayments || []).map((row, i) => (
+                  <tr key={i}>
+                    <td>
+                      <EditCell 
+                        isText 
+                        isSelect 
+                        selectOptions={(jain.usaRows || []).map(r => r.trustName)} 
+                        value={row.trustName} 
+                        onSave={v => updateUsaRepaymentText(i, 'trustName', v)} 
+                      />
+                    </td>
+                    <td>
+                      <EditCell isText isDate value={row.date} onSave={v => updateUsaRepaymentText(i, 'date', v)} />
+                    </td>
+                    <td>
+                      <EditCell value={row.amount} onSave={v => updateUsaRepayment(i, 'amount', v)} />
+                    </td>
+                    <td>
+                      <div className="flex justify-center">
+                        <button
+                          onClick={() => deleteUsaRepayment(i)}
+                          className="p-1 rounded text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors"
+                          title="Delete Repayment"
+                        >
+                          🗑
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {(!jain.usaRepayments || jain.usaRepayments.length === 0) && (
+                  <tr>
+                    <td colSpan="4" className="text-center text-white/40 py-6 text-xs italic">
+                      No USA repayments logged. Click "+ Add USA Repayment" to log one.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      {/* STAFFING ROWS EDITOR */}
+      <section className="space-y-4">
+        <h3 className="text-sm font-bold uppercase tracking-widest text-purple-400 flex items-center gap-2">
+          💼 Staffing Payment Rows ($ USD)
+        </h3>
+        <div className="glass-card overflow-hidden border border-purple-500/20">
+          <div className="overflow-x-auto">
+            <table className="loan-table">
+              <thead>
+                <tr>
+                  <th>Payment Milestone</th>
+                  <th style={{ color: '#c084fc' }}>Amount ($)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(staffing?.rows || []).map((row, i) => (
+                  <tr key={i}>
+                    <td>
+                      <EditCell isText value={row.payment} onSave={v => updateStaffingRowText(i, 'payment', v)} />
+                    </td>
+                    <td>
+                      <EditCell value={row.amount} onSave={v => updateStaffingRow(i, 'amount', v)} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      {/* STAFFING REPAYMENTS EDITOR */}
+      <section className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-bold uppercase tracking-widest text-purple-400 flex items-center gap-2">
+            💼 Staffing Repayments ($ USD)
+          </h3>
+          <button
+            onClick={() => {
+              const firstPayment = (staffing?.rows && staffing.rows[0]?.payment) || 'Offer Letter – Now';
+              const todayStr = toDisplayDate(new Date().toISOString().split('T')[0]);
+              addStaffingRepayment(firstPayment, todayStr, 0);
+            }}
+            className="px-3 py-1.5 rounded-lg bg-purple-500/10 border border-purple-500/20 text-[10px] font-bold uppercase tracking-wider text-purple-300 hover:bg-purple-500/20 transition-all flex items-center gap-1.5"
+          >
+            + Add Staffing Repayment
+          </button>
+        </div>
+        <div className="glass-card overflow-hidden border border-purple-500/20">
+          <div className="overflow-x-auto">
+            <table className="loan-table">
+              <thead>
+                <tr>
+                  <th>Payment</th>
+                  <th>Date</th>
+                  <th>Amount ($)</th>
+                  <th style={{ width: '10%', textAlign: 'center' }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(staffing?.repayments || []).map((row, i) => (
+                  <tr key={i}>
+                    <td>
+                      <EditCell 
+                        isText 
+                        isSelect 
+                        selectOptions={(staffing?.rows || []).map(r => r.payment)} 
+                        value={row.payment} 
+                        onSave={v => updateStaffingRepaymentText(i, 'payment', v)} 
+                      />
+                    </td>
+                    <td>
+                      <EditCell isText isDate value={row.date} onSave={v => updateStaffingRepaymentText(i, 'date', v)} />
+                    </td>
+                    <td>
+                      <EditCell value={row.amount} onSave={v => updateStaffingRepayment(i, 'amount', v)} />
+                    </td>
+                    <td>
+                      <div className="flex justify-center">
+                        <button
+                          onClick={() => deleteStaffingRepayment(i)}
+                          className="p-1 rounded text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors"
+                          title="Delete Repayment"
+                        >
+                          🗑
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {(!staffing?.repayments || staffing.repayments.length === 0) && (
+                  <tr>
+                    <td colSpan="4" className="text-center text-white/40 py-6 text-xs italic">
+                      No Staffing repayments logged. Click "+ Add Staffing Repayment" to log one.
                     </td>
                   </tr>
                 )}

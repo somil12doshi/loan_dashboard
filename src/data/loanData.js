@@ -44,16 +44,6 @@ export const jainData = {
       repaymentAmount: 50000,
     },
     {
-      trustName: 'SMJV (USA $5000)',
-      disbursDate2024: null,
-      amount2024: null,
-      disbursDate2025: '9 Oct 2025',
-      amount2025: 450000,
-      total: 450000,
-      repaymentStart: null,
-      repaymentAmount: null,
-    },
-    {
       trustName: 'JITO',
       disbursDate2024: '17 Apr 2024',
       amount2024: 500000,
@@ -76,13 +66,44 @@ export const jainData = {
   ],
   totals: {
     amount2024: 1550000,
-    amount2025: 1450000,
-    total: 3000000,
+    amount2025: 1000000,
+    total: 2550000,
     repaymentAmount: 230000,
     totalRepayments: 0,
-    remainingLiability: 3000000,
+    remainingLiability: 2550000,
+  },
+  usaHeaders: [
+    'Trust / Lender Name',
+    'Disburse Date 2024',
+    '2024 Amount',
+    'Disburse Date 2025',
+    '2025 Amount',
+    'Total Loan',
+    'Repayment Start',
+    'Repayment Amount',
+  ],
+  usaRows: [
+    {
+      trustName: 'SMJV (USA $5000)',
+      disbursDate2024: null,
+      amount2024: null,
+      disbursDate2025: '9 Oct 2025',
+      amount2025: 5000,
+      total: 5000,
+      repaymentStart: null,
+      repaymentAmount: null,
+    },
+  ],
+  usaTotals: {
+    amount2024: 0,
+    amount2025: 5000,
+    total: 5000,
+    repaymentAmount: 0,
+    totalRepayments: 0,
+    remainingLiability: 5000,
   },
   repayments: [],
+  usaRepayments: [],
 };
 
 export const hdfcData = {
@@ -169,3 +190,25 @@ export const summaryData = {
   jainActiveLoans: jainData.rows.length,
   hdfcActiveLoans: hdfcData.rows.filter(r => r.amountNow > 0).length,
 };
+
+export const staffingData = {
+  title: 'Total Amount Payable (12%): $9,360',
+  totalAmountPayable: 9360,
+  rate: '12%',
+  headers: ['Payment', 'Amount'],
+  rows: [
+    { payment: 'Offer Letter – Now', amount: 1500, date: '19 Sep 2026', status: 'Paid' },
+    { payment: 'Installment 2', amount: 2620, date: null, status: 'Pending' },
+    { payment: 'Installment 3', amount: 2620, date: null, status: 'Pending' },
+    { payment: 'Installment 4', amount: 2620, date: null, status: 'Pending' },
+  ],
+  repayments: [
+    { payment: 'Offer Letter – Now', date: '19 Sep 2026', amount: 1500 },
+  ],
+  totals: {
+    total: 9360,
+    totalRepayments: 1500,
+    remainingLiability: 7860,
+  },
+};
+

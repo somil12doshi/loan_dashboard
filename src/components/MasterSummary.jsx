@@ -12,6 +12,7 @@ const COLORS = {
   hdfc: '#6366f1',
   green: '#34d399',
   amber: '#fbbf24',
+  purple: '#a855f7',
 };
 
 const TT = ({ children }) => (
@@ -113,8 +114,13 @@ function NextInstallments({ jain, hdfc }) {
 
   const upcoming = [];
 
+  const allJainRows = [
+    ...(jain.rows || []).map(r => ({ ...r, isUsd: false })),
+    ...(jain.usaRows || []).map(r => ({ ...r, isUsd: true }))
+  ];
+
   // JAIN rows with repayment start date specified
-  jain.rows.forEach(r => {
+  allJainRows.forEach(r => {
     if (!r.repaymentAmount) return;
     if (!r.repaymentStart) return; // Skip if no repayment start date is specified
 
@@ -154,8 +160,9 @@ function NextInstallments({ jain, hdfc }) {
         name: r.trustName,
         amount: r.repaymentAmount,
         date: nextPaymentDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }),
-        type: 'JAIN',
-        color: COLORS.jain,
+        type: r.isUsd ? 'USA LOAN' : 'JAIN INDIA',
+        color: r.isUsd ? COLORS.amber : COLORS.jain,
+        isUsd: r.isUsd,
         status,
         daysLeft,
       });
@@ -211,7 +218,9 @@ function NextInstallments({ jain, hdfc }) {
                   </span>
                 </div>
 
-                <p className="text-xl font-bold text-white mb-2">{fmt(item.amount)}</p>
+                <p className="text-xl font-bold text-white mb-2">
+                  {item.isUsd ? '$' + (item.amount || 0).toLocaleString('en-US') : fmt(item.amount)}
+                </p>
 
                 <div className="flex items-center justify-between text-xs" style={{ color: 'rgba(255,255,255,0.45)' }}>
                   <span>📅 {item.date}</span>
@@ -228,7 +237,7 @@ function NextInstallments({ jain, hdfc }) {
   );
 }
 
-function OverviewCard({ title, combinedValue, jainValue, hdfcValue, icon, colors, index }) {
+function OverviewCard({ title, combinedValue, jainValue, hdfcValue, icon, colors, index, customValue }) {
   const total = jainValue + hdfcValue;
   const jainPct = total > 0 ? (jainValue / total) * 100 : 0;
   const hdfcPct = total > 0 ? (hdfcValue / total) * 100 : 0;
@@ -237,27 +246,31 @@ function OverviewCard({ title, combinedValue, jainValue, hdfcValue, icon, colors
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.1 }}
+      transition={{ delay: index * 0.08 }}
       whileHover={{ y: -4, transition: { duration: 0.2 } }}
-      className="glass-card p-6 flex flex-col justify-between relative overflow-hidden h-full min-h-[200px]"
+      className={`glass-card p-5 flex flex-col justify-between relative overflow-hidden h-full ${customValue ? 'min-h-[120px]' : 'min-h-[175px]'}`}
     >
       <div>
         {/* Top Header */}
-        <div className="flex items-center justify-between mb-4">
-          <span className="text-xs font-semibold text-white/50 uppercase tracking-wider">{title}</span>
-          <span className="text-xl" style={{ color: colors.accent }}>{icon}</span>
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs font-semibold text-white/60 uppercase tracking-wider">{title}</span>
+          <span className="text-xl shrink-0 ml-2" style={{ color: colors.accent }}>{icon}</span>
         </div>
 
         {/* Combined Total Value */}
-        <div className="mb-6">
-          <p className="text-3xl font-extrabold text-white tracking-tight">{fmt(combinedValue)}</p>
-          <span className="text-[10px] text-white/40 uppercase tracking-widest font-semibold">Combined Balance</span>
+        <div className={customValue ? "mb-0" : "mb-4"}>
+          <p className="text-2xl lg:text-3xl font-extrabold text-white tracking-tight">
+            {customValue ? customValue : fmt(combinedValue)}
+          </p>
+          <span className="text-[10px] text-white/40 uppercase tracking-widest font-semibold">
+            {customValue ? 'International Liability' : 'Combined Balance'}
+          </span>
         </div>
       </div>
 
       {/* Progress Split Bar & Detail */}
       {total > 0 ? (
-        <div className="space-y-4">
+        <div className="space-y-3">
           {/* Progress bar */}
           <div className="h-2 w-full rounded-full bg-white/5 overflow-hidden flex">
             {jainValue > 0 && (
@@ -275,51 +288,59 @@ function OverviewCard({ title, combinedValue, jainValue, hdfcValue, icon, colors
           </div>
 
           {/* Details */}
-          <div className="flex items-center justify-between text-xs pt-1">
-            <div className="flex flex-col">
-              <span className="text-[10px] uppercase text-white/40 mb-1 flex items-center gap-1.5 font-medium">
-                <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: colors.jain }} />
-                JAIN Trust
-              </span>
-              <span className="text-sm font-semibold" style={{ color: colors.jain }}>
-                {fmt(jainValue)}
-                {jainValue > 0 && (
-                  <span className="text-[10px] text-white/45 ml-1 font-normal">({jainPct.toFixed(0)}%)</span>
-                )}
-              </span>
-            </div>
+          <div className="flex items-center justify-between text-xs pt-1 gap-2">
+            {jainValue > 0 && (
+              <div className="flex flex-col">
+                <span className="text-[10px] uppercase text-white/40 mb-0.5 flex items-center gap-1.5 font-medium">
+                  <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: colors.jain }} />
+                  JAIN Trust
+                </span>
+                <span className="text-sm font-semibold" style={{ color: colors.jain }}>
+                  {fmt(jainValue)}
+                  {hdfcValue > 0 && (
+                    <span className="text-[10px] text-white/45 ml-1 font-normal">({jainPct.toFixed(0)}%)</span>
+                  )}
+                </span>
+              </div>
+            )}
 
-            <div className="flex flex-col items-end">
-              <span className="text-[10px] uppercase text-white/40 mb-1 flex items-center gap-1.5 font-medium">
-                HDFC
-                <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: colors.hdfc }} />
-              </span>
-              <span className="text-sm font-semibold text-right" style={{ color: colors.hdfc }}>
-                {fmt(hdfcValue)}
-                {hdfcValue > 0 && (
-                  <span className="text-[10px] text-white/45 ml-1 font-normal">({hdfcPct.toFixed(0)}%)</span>
-                )}
-              </span>
-            </div>
+            {hdfcValue > 0 && (
+              <div className={`flex flex-col ${jainValue > 0 ? 'items-end' : 'items-start'}`}>
+                <span className="text-[10px] uppercase text-white/40 mb-0.5 flex items-center gap-1.5 font-medium">
+                  <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: colors.hdfc }} />
+                  HDFC
+                </span>
+                <span className="text-sm font-semibold" style={{ color: colors.hdfc }}>
+                  {fmt(hdfcValue)}
+                  {jainValue > 0 && (
+                    <span className="text-[10px] text-white/45 ml-1 font-normal">({hdfcPct.toFixed(0)}%)</span>
+                  )}
+                </span>
+              </div>
+            )}
           </div>
         </div>
-      ) : (
-        <div className="text-xs text-white/30 italic py-2">No active liability</div>
+      ) : customValue ? null : (
+        <div className="text-xs text-amber-400/70 italic py-2">
+          No active liability
+        </div>
       )}
     </motion.div>
   );
 }
 
 export default function MasterSummary() {
-  const { summaryData, jain, hdfc } = useData();
+  const { summaryData, jain, hdfc, staffing } = useData();
+  const usaLiability = jain.usaTotals?.remainingLiability || 5000;
+  const staffingLiability = staffing?.totals?.remainingLiability || 7860;
 
   const loanDistribution = [
-    { name: 'JAIN Trust', value: summaryData.jainTotal, fill: COLORS.jain },
+    { name: 'JAIN India', value: summaryData.jainTotal, fill: COLORS.jain },
     { name: 'HDFC', value: summaryData.hdfcTotal, fill: COLORS.hdfc },
   ];
 
   const remainingBreakdown = [
-    { name: 'JAIN Trust', value: summaryData.jainRemainingLiability, fill: COLORS.jain },
+    { name: 'JAIN India', value: summaryData.jainRemainingLiability, fill: COLORS.jain },
     { name: 'HDFC Amount Now', value: summaryData.hdfcAmountNow, fill: COLORS.hdfc },
   ];
 
@@ -331,11 +352,13 @@ export default function MasterSummary() {
       className="space-y-10"
     >
       {/* Master Overview */}
-      <section>
+      <section className="space-y-4">
         <SectionTitle title="Master Overview" sub="Combined financial position across all loan sources" />
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        
+        {/* INR Liabilities */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           <OverviewCard
-            title="Total Principal"
+            title="Total Principal (INR)"
             combinedValue={summaryData.totalCombinedLoan}
             jainValue={summaryData.jainTotal}
             hdfcValue={summaryData.hdfcTotal}
@@ -344,7 +367,7 @@ export default function MasterSummary() {
             index={0}
           />
           <OverviewCard
-            title="Current Outstanding"
+            title="Current Outstanding (INR)"
             combinedValue={summaryData.totalRemainingLiability}
             jainValue={summaryData.jainRemainingLiability}
             hdfcValue={summaryData.hdfcAmountNow}
@@ -353,13 +376,37 @@ export default function MasterSummary() {
             index={1}
           />
           <OverviewCard
-            title="Interest Remaining"
+            title="Interest Remaining (INR)"
             combinedValue={summaryData.hdfcInterestLeft}
             jainValue={0}
             hdfcValue={summaryData.hdfcInterestLeft}
             icon="%"
-            colors={{ jain: COLORS.jain, hdfc: COLORS.hdfc, accent: COLORS.amber }}
+            colors={{ jain: COLORS.jain, hdfc: COLORS.hdfc, accent: COLORS.green }}
             index={2}
+          />
+        </div>
+
+        {/* International USD Liabilities */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-2">
+          <OverviewCard
+            title="USA Loan Remaining ($ USD)"
+            combinedValue={0}
+            jainValue={0}
+            hdfcValue={0}
+            customValue={'$' + usaLiability.toLocaleString('en-US')}
+            icon="$"
+            colors={{ jain: COLORS.amber, hdfc: COLORS.amber, accent: COLORS.amber }}
+            index={3}
+          />
+          <OverviewCard
+            title="Staffing Remaining ($ USD)"
+            combinedValue={0}
+            jainValue={0}
+            hdfcValue={0}
+            customValue={'$' + staffingLiability.toLocaleString('en-US')}
+            icon="💼"
+            colors={{ jain: COLORS.purple, hdfc: COLORS.purple, accent: COLORS.purple }}
+            index={4}
           />
         </div>
       </section>

@@ -42,7 +42,7 @@ export default function StatCard({ title, value, accent, icon, index }) {
       </p>
       
       <p className="text-2xl font-extrabold text-white tracking-tight relative z-10 transition-colors duration-300 group-hover:text-white">
-        {fmt(value)}
+        {typeof value === 'string' ? value : fmt(value)}
       </p>
     </motion.div>
   );
