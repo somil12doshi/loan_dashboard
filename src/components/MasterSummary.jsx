@@ -8,11 +8,12 @@ import { useData } from '../data/DataContext';
 const fmt = n => '₹' + n.toLocaleString('en-IN');
 
 const COLORS = {
-  jain: '#06b6d4',
-  hdfc: '#6366f1',
-  green: '#34d399',
-  amber: '#fbbf24',
-  purple: '#a855f7',
+  jain: '#06b6d4',      // Cyan (Jain India)
+  hdfc: '#6366f1',      // Indigo (HDFC)
+  green: '#10b981',     // Emerald Green
+  amber: '#f59e0b',     // Gold / Amber (USA Loan)
+  purple: '#a855f7',    // Purple
+  pink: '#ec4899',      // Vibrant Pink / Magenta (Staffing)
 };
 
 const TT = ({ children }) => (
@@ -124,49 +125,57 @@ function NextInstallments({ jain, hdfc }) {
     if (!r.repaymentAmount) return;
     if (!r.repaymentStart) return; // Skip if no repayment start date is specified
 
+    // Calculate total loan and total repayments for this specific trust row
+    const totalLoan = r.total || ((r.amount2024 || 0) + (r.amount2025 || 0));
+    const trustRepayments = r.isUsd
+      ? (jain.usaRepayments || []).filter(rep => rep.trustName === r.trustName).reduce((s, rep) => s + (rep.amount || 0), 0)
+      : (jain.repayments || []).filter(rep => rep.trustName === r.trustName).reduce((s, rep) => s + (rep.amount || 0), 0);
+
+    const trustRemaining = totalLoan - trustRepayments;
+
+    // Skip if remaining amount in this Trust is 0 or less
+    if (trustRemaining <= 0) return;
+
     const startDate = parseDate(r.repaymentStart);
     if (!startDate) return; // Skip invalid dates
-    let nextPaymentDate = null;
 
-    if (startDate > today) {
-      // Future start date
-      nextPaymentDate = startDate;
-    } else {
-      // Past start date, ongoing monthly on the same calendar day of the month
-      const paymentDay = startDate.getDate();
-      const currentMonthPayment = new Date(today.getFullYear(), today.getMonth(), paymentDay);
+    let nextPaymentDate = new Date(startDate);
+    const paymentDay = startDate.getDate();
 
-      if (currentMonthPayment >= today) {
-        nextPaymentDate = currentMonthPayment;
-      } else {
-        nextPaymentDate = new Date(today.getFullYear(), today.getMonth() + 1, paymentDay);
+    // Advance month-by-month as long as current due is over (nextPaymentDate < today)
+    while (nextPaymentDate < today) {
+      const curYear = nextPaymentDate.getFullYear();
+      const curMonth = nextPaymentDate.getMonth();
+      let nextMonth = curMonth + 1;
+      let nextYear = curYear;
+      if (nextMonth > 11) {
+        nextMonth = 0;
+        nextYear++;
       }
+      const daysInTargetMonth = new Date(nextYear, nextMonth + 1, 0).getDate();
+      const targetDay = Math.min(paymentDay, daysInTargetMonth);
+      nextPaymentDate = new Date(nextYear, nextMonth, targetDay);
     }
 
-    if (nextPaymentDate) {
-      // Enforce that nextPaymentDate is never before the repayment start date
-      if (nextPaymentDate < startDate) {
-        nextPaymentDate = startDate;
-      }
+    const daysLeft = Math.ceil((nextPaymentDate - today) / 86400000);
+    let status = 'active';
 
-      const daysLeft = Math.ceil((nextPaymentDate - today) / 86400000);
-      let status = 'active';
+    if (daysLeft <= 7) status = 'urgent';
+    else if (daysLeft <= 30) status = 'soon';
+    else status = 'upcoming';
 
-      if (daysLeft <= 7) status = 'urgent';
-      else if (daysLeft <= 30) status = 'soon';
-      else status = 'upcoming';
+    const installmentAmount = Math.min(r.repaymentAmount, trustRemaining);
 
-      upcoming.push({
-        name: r.trustName,
-        amount: r.repaymentAmount,
-        date: nextPaymentDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }),
-        type: r.isUsd ? 'USA LOAN' : 'JAIN INDIA',
-        color: r.isUsd ? COLORS.amber : COLORS.jain,
-        isUsd: r.isUsd,
-        status,
-        daysLeft,
-      });
-    }
+    upcoming.push({
+      name: r.trustName,
+      amount: installmentAmount,
+      date: nextPaymentDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }),
+      type: r.isUsd ? 'USA LOAN' : 'JAIN INDIA',
+      color: r.isUsd ? COLORS.amber : COLORS.jain,
+      isUsd: r.isUsd,
+      status,
+      daysLeft,
+    });
   });
 
   // Sort by days left ascending
@@ -237,10 +246,12 @@ function NextInstallments({ jain, hdfc }) {
   );
 }
 
-function OverviewCard({ title, combinedValue, jainValue, hdfcValue, icon, colors, index, customValue }) {
-  const total = jainValue + hdfcValue;
-  const jainPct = total > 0 ? (jainValue / total) * 100 : 0;
-  const hdfcPct = total > 0 ? (hdfcValue / total) * 100 : 0;
+function OverviewCard({ title, combinedValue, jainValue, hdfcValue, items, icon, colors, index, customValue, hideProgressBar, subtitle }) {
+  const total = items ? items.reduce((s, item) => s + (item.value || 0), 0) : (jainValue || 0) + (hdfcValue || 0);
+  const jainPct = !items && total > 0 ? (jainValue / total) * 100 : 0;
+  const hdfcPct = !items && total > 0 ? (hdfcValue / total) * 100 : 0;
+
+  const isCompact = customValue || hideProgressBar;
 
   return (
     <motion.div
@@ -248,7 +259,7 @@ function OverviewCard({ title, combinedValue, jainValue, hdfcValue, icon, colors
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.08 }}
       whileHover={{ y: -4, transition: { duration: 0.2 } }}
-      className={`glass-card p-5 flex flex-col justify-between relative overflow-hidden h-full ${customValue ? 'min-h-[120px]' : 'min-h-[175px]'}`}
+      className={`glass-card p-5 flex flex-col justify-between relative overflow-hidden h-full ${isCompact ? 'min-h-[125px]' : 'min-h-[175px]'}`}
     >
       <div>
         {/* Top Header */}
@@ -258,81 +269,130 @@ function OverviewCard({ title, combinedValue, jainValue, hdfcValue, icon, colors
         </div>
 
         {/* Combined Total Value */}
-        <div className={customValue ? "mb-0" : "mb-4"}>
+        <div className={isCompact ? "mb-0" : "mb-4"}>
           <p className="text-2xl lg:text-3xl font-extrabold text-white tracking-tight">
             {customValue ? customValue : fmt(combinedValue)}
           </p>
           <span className="text-[10px] text-white/40 uppercase tracking-widest font-semibold">
-            {customValue ? 'International Liability' : 'Combined Balance'}
+            {subtitle ? subtitle : customValue ? 'International Liability' : 'Combined Balance'}
           </span>
         </div>
       </div>
 
       {/* Progress Split Bar & Detail */}
-      {total > 0 ? (
-        <div className="space-y-3">
-          {/* Progress bar */}
-          <div className="h-2 w-full rounded-full bg-white/5 overflow-hidden flex">
-            {jainValue > 0 && (
-              <div 
-                style={{ width: `${jainPct}%`, backgroundColor: colors.jain }} 
-                className="h-full transition-all duration-500" 
-              />
-            )}
-            {hdfcValue > 0 && (
-              <div 
-                style={{ width: `${hdfcPct}%`, backgroundColor: colors.hdfc }} 
-                className="h-full transition-all duration-500"
-              />
-            )}
-          </div>
+      {!hideProgressBar && total > 0 ? (
+        items ? (
+          <div className="space-y-3">
+            {/* Multi-item Progress bar */}
+            <div className="h-2 w-full rounded-full bg-white/5 overflow-hidden flex">
+              {items.map((item, idx) => {
+                if (!item.value || item.value <= 0) return null;
+                const pct = (item.value / total) * 100;
+                return (
+                  <div
+                    key={idx}
+                    style={{ width: `${pct}%`, backgroundColor: item.color }}
+                    className="h-full transition-all duration-500"
+                  />
+                );
+              })}
+            </div>
 
-          {/* Details */}
-          <div className="flex items-center justify-between text-xs pt-1 gap-2">
-            {jainValue > 0 && (
-              <div className="flex flex-col">
-                <span className="text-[10px] uppercase text-white/40 mb-0.5 flex items-center gap-1.5 font-medium">
-                  <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: colors.jain }} />
-                  JAIN Trust
-                </span>
-                <span className="text-sm font-semibold" style={{ color: colors.jain }}>
-                  {fmt(jainValue)}
-                  {hdfcValue > 0 && (
-                    <span className="text-[10px] text-white/45 ml-1 font-normal">({jainPct.toFixed(0)}%)</span>
-                  )}
-                </span>
-              </div>
-            )}
-
-            {hdfcValue > 0 && (
-              <div className={`flex flex-col ${jainValue > 0 ? 'items-end' : 'items-start'}`}>
-                <span className="text-[10px] uppercase text-white/40 mb-0.5 flex items-center gap-1.5 font-medium">
-                  <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: colors.hdfc }} />
-                  HDFC
-                </span>
-                <span className="text-sm font-semibold" style={{ color: colors.hdfc }}>
-                  {fmt(hdfcValue)}
-                  {jainValue > 0 && (
-                    <span className="text-[10px] text-white/45 ml-1 font-normal">({hdfcPct.toFixed(0)}%)</span>
-                  )}
-                </span>
-              </div>
-            )}
+            {/* Details */}
+            <div className="grid grid-cols-2 gap-x-2 gap-y-1.5 text-xs pt-1">
+              {items.map((item, idx) => {
+                if (!item.value || item.value <= 0) return null;
+                const pct = (item.value / total) * 100;
+                return (
+                  <div key={idx} className="flex flex-col">
+                    <span className="text-[10px] uppercase text-white/40 mb-0.5 flex items-center gap-1 font-medium truncate">
+                      <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+                      {item.name}
+                    </span>
+                    <span className="text-xs font-semibold text-white flex items-center gap-1 flex-wrap">
+                      <span style={{ color: item.color }}>{fmt(item.value)}</span>
+                      <span className="text-[10px] text-white/45 font-normal">({pct.toFixed(0)}%)</span>
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
-        </div>
-      ) : customValue ? null : (
-        <div className="text-xs text-amber-400/70 italic py-2">
-          No active liability
-        </div>
-      )}
+        ) : (
+          <div className="space-y-3">
+            {/* Progress bar */}
+            <div className="h-2 w-full rounded-full bg-white/5 overflow-hidden flex">
+              {jainValue > 0 && (
+                <div 
+                  style={{ width: `${jainPct}%`, backgroundColor: colors.jain }} 
+                  className="h-full transition-all duration-500" 
+                />
+              )}
+              {hdfcValue > 0 && (
+                <div 
+                  style={{ width: `${hdfcPct}%`, backgroundColor: colors.hdfc }} 
+                  className="h-full transition-all duration-500"
+                />
+              )}
+            </div>
+
+            {/* Details */}
+            <div className="flex items-center justify-between text-xs pt-1 gap-2">
+              {jainValue > 0 && (
+                <div className="flex flex-col">
+                  <span className="text-[10px] uppercase text-white/40 mb-0.5 flex items-center gap-1.5 font-medium">
+                    <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: colors.jain }} />
+                    JAIN Trust
+                  </span>
+                  <span className="text-sm font-semibold" style={{ color: colors.jain }}>
+                    {fmt(jainValue)}
+                    {hdfcValue > 0 && (
+                      <span className="text-[10px] text-white/45 ml-1 font-normal">({jainPct.toFixed(0)}%)</span>
+                    )}
+                  </span>
+                </div>
+              )}
+
+              {hdfcValue > 0 && (
+                <div className={`flex flex-col ${jainValue > 0 ? 'items-end' : 'items-start'}`}>
+                  <span className="text-[10px] uppercase text-white/40 mb-0.5 flex items-center gap-1.5 font-medium">
+                    <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: colors.hdfc }} />
+                    HDFC
+                  </span>
+                  <span className="text-sm font-semibold" style={{ color: colors.hdfc }}>
+                    {fmt(hdfcValue)}
+                    {jainValue > 0 && (
+                      <span className="text-[10px] text-white/45 ml-1 font-normal">({hdfcPct.toFixed(0)}%)</span>
+                    )}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        )
+      ) : customValue ? null : null}
     </motion.div>
   );
 }
 
 export default function MasterSummary() {
   const { summaryData, jain, hdfc, staffing } = useData();
-  const usaLiability = jain.usaTotals?.remainingLiability || 5000;
-  const staffingLiability = staffing?.totals?.remainingLiability || 7860;
+  const usaLiabilityUSD = jain.usaTotals?.remainingLiability || 5000;
+  const staffingLiabilityUSD = staffing?.totals?.remainingLiability || 7860;
+  const usaLiabilityINR = usaLiabilityUSD * 95;
+  const staffingLiabilityINR = staffingLiabilityUSD * 95;
+
+  // 4 distinct colors for all 4 loans:
+  // 1. Jain Trust (India): Cyan (#06b6d4)
+  // 2. HDFC: Indigo (#6366f1)
+  // 3. USA Loan ($5000): Amber / Gold (#f59e0b)
+  // 4. Staffing: Vibrant Pink / Magenta (#ec4899)
+  const currentOutstandingItems = [
+    { name: 'JAIN TRUST', value: summaryData.jainRemainingLiability, color: COLORS.jain },
+    { name: 'HDFC', value: summaryData.hdfcAmountNow, color: COLORS.hdfc },
+    { name: 'USA LOAN', value: usaLiabilityINR, color: COLORS.amber },
+    { name: 'STAFFING', value: staffingLiabilityINR, color: COLORS.pink },
+  ];
 
   const loanDistribution = [
     { name: 'JAIN India', value: summaryData.jainTotal, fill: COLORS.jain },
@@ -342,7 +402,9 @@ export default function MasterSummary() {
   const remainingBreakdown = [
     { name: 'JAIN India', value: summaryData.jainRemainingLiability, fill: COLORS.jain },
     { name: 'HDFC Amount Now', value: summaryData.hdfcAmountNow, fill: COLORS.hdfc },
-  ];
+    { name: 'USA Loan (INR)', value: usaLiabilityINR, fill: COLORS.amber },
+    { name: 'Staffing (INR)', value: staffingLiabilityINR, fill: COLORS.pink },
+  ].filter(item => item.value > 0);
 
   return (
     <motion.div
@@ -355,8 +417,8 @@ export default function MasterSummary() {
       <section className="space-y-4">
         <SectionTitle title="Master Overview" sub="Combined financial position across all loan sources" />
         
-        {/* INR Liabilities */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        {/* Line 1: Main Overview Cards (2 Columns) */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <OverviewCard
             title="Total Principal (INR)"
             combinedValue={summaryData.totalCombinedLoan}
@@ -369,31 +431,30 @@ export default function MasterSummary() {
           <OverviewCard
             title="Current Outstanding (INR)"
             combinedValue={summaryData.totalRemainingLiability}
-            jainValue={summaryData.jainRemainingLiability}
-            hdfcValue={summaryData.hdfcAmountNow}
+            items={currentOutstandingItems}
             icon="◉"
             colors={{ jain: COLORS.jain, hdfc: COLORS.hdfc, accent: COLORS.hdfc }}
             index={1}
           />
+        </div>
+
+        {/* Line 2: Interest Remaining & International Liabilities (3 Columns) */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 pt-2">
           <OverviewCard
             title="Interest Remaining (INR)"
             combinedValue={summaryData.hdfcInterestLeft}
-            jainValue={0}
-            hdfcValue={summaryData.hdfcInterestLeft}
+            hideProgressBar={true}
             icon="%"
-            colors={{ jain: COLORS.jain, hdfc: COLORS.hdfc, accent: COLORS.green }}
+            subtitle="HDFC Interest Left"
+            colors={{ jain: COLORS.green, hdfc: COLORS.green, accent: COLORS.green }}
             index={2}
           />
-        </div>
-
-        {/* International USD Liabilities */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-2">
           <OverviewCard
             title="USA Loan Remaining ($ USD)"
             combinedValue={0}
             jainValue={0}
             hdfcValue={0}
-            customValue={'$' + usaLiability.toLocaleString('en-US')}
+            customValue={'$' + usaLiabilityUSD.toLocaleString('en-US')}
             icon="$"
             colors={{ jain: COLORS.amber, hdfc: COLORS.amber, accent: COLORS.amber }}
             index={3}
@@ -403,9 +464,9 @@ export default function MasterSummary() {
             combinedValue={0}
             jainValue={0}
             hdfcValue={0}
-            customValue={'$' + staffingLiability.toLocaleString('en-US')}
+            customValue={'$' + staffingLiabilityUSD.toLocaleString('en-US')}
             icon="💼"
-            colors={{ jain: COLORS.purple, hdfc: COLORS.purple, accent: COLORS.purple }}
+            colors={{ jain: COLORS.pink, hdfc: COLORS.pink, accent: COLORS.pink }}
             index={4}
           />
         </div>

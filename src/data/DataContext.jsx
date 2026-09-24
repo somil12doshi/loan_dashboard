@@ -619,18 +619,27 @@ export function DataProvider({ children }) {
     }
   }, []);
 
+  const usaLiabilityUSD = jain.usaTotals?.remainingLiability || 0;
+  const staffingLiabilityUSD = staffing.totals?.remainingLiability || 0;
+  const usaLiabilityINR = usaLiabilityUSD * 95;
+  const staffingLiabilityINR = staffingLiabilityUSD * 95;
+  const totalOutstandingINR = jain.totals.remainingLiability + hdfc.totals.amountNow + usaLiabilityINR + staffingLiabilityINR;
+
   const summaryData = {
     totalCombinedLoan: jain.totals.total + hdfc.summary.totalPrincipal,
-    totalRemainingLiability: jain.totals.remainingLiability + hdfc.totals.amountNow,
+    totalRemainingLiability: totalOutstandingINR,
     jainTotal: jain.totals.total,
     usaTotal: jain.usaTotals?.total || 5000,
     hdfcTotal: hdfc.summary.totalPrincipal,
     staffingTotal: staffing.totals?.total || 9360,
     jainRemainingLiability: jain.totals.remainingLiability,
-    jainRepayment: jain.totals.repaymentAmount,
+    usaRemainingLiability: usaLiabilityUSD,
+    usaRemainingLiabilityINR: usaLiabilityINR,
+    hdfcTotalPrincipal: hdfc.summary.totalPrincipal,
     hdfcInterestLeft: hdfc.totals.interestLeft,
     hdfcAmountNow: hdfc.totals.amountNow,
-    staffingRemainingLiability: staffing.totals?.remainingLiability || 9360,
+    staffingRemainingLiability: staffingLiabilityUSD,
+    staffingRemainingLiabilityINR: staffingLiabilityINR,
     staffingRepayments: staffing.totals?.totalRepayments || 0,
     jainActiveLoans: jain.rows.length,
     usaActiveLoans: (jain.usaRows || []).length,
