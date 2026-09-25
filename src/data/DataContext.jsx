@@ -623,15 +623,36 @@ export function DataProvider({ children }) {
   const staffingLiabilityUSD = staffing.totals?.remainingLiability || 0;
   const usaLiabilityINR = usaLiabilityUSD * 95;
   const staffingLiabilityINR = staffingLiabilityUSD * 95;
+
+  const usaTotalUSD = jain.usaTotals?.total || 5000;
+  const staffingTotalUSD = staffing.totals?.total || 9360;
+  const usaTotalINR = usaTotalUSD * 95;
+  const staffingTotalINR = staffingTotalUSD * 95;
+  const indiaPrincipalTotal = jain.totals.total + hdfc.summary.totalPrincipal;
+  const grandTotalLoan = indiaPrincipalTotal + usaTotalINR + staffingTotalINR;
+
   const totalOutstandingINR = jain.totals.remainingLiability + hdfc.totals.amountNow + usaLiabilityINR + staffingLiabilityINR;
+  const totalRepaidINR = Math.max(0, grandTotalLoan - totalOutstandingINR);
+  const repaidPercentage = grandTotalLoan > 0 ? (totalRepaidINR / grandTotalLoan) * 100 : 0;
+  const remainingPercentage = grandTotalLoan > 0 ? (totalOutstandingINR / grandTotalLoan) * 100 : 0;
 
   const summaryData = {
-    totalCombinedLoan: jain.totals.total + hdfc.summary.totalPrincipal,
-    totalRemainingLiability: totalOutstandingINR,
+    // Total original loans
+    totalCombinedLoan: indiaPrincipalTotal, // ₹47,00,000 (India loans)
+    indiaPrincipalTotal,
+    grandTotalLoan, // ₹60,64,200 (Total Principal + Staffing @ 95 + USA Loan @ 95)
+    usaTotal: usaTotalUSD,
+    usaTotalUSD,
+    usaTotalINR,
+    staffingTotal: staffingTotalUSD,
+    staffingTotalUSD,
+    staffingTotalINR,
     jainTotal: jain.totals.total,
-    usaTotal: jain.usaTotals?.total || 5000,
     hdfcTotal: hdfc.summary.totalPrincipal,
-    staffingTotal: staffing.totals?.total || 9360,
+
+    // Outstanding / Remaining
+    totalRemainingLiability: totalOutstandingINR, // ₹48,93,792 (Total loan left)
+    totalLoanLeft: totalOutstandingINR,
     jainRemainingLiability: jain.totals.remainingLiability,
     usaRemainingLiability: usaLiabilityUSD,
     usaRemainingLiabilityINR: usaLiabilityINR,
@@ -640,7 +661,18 @@ export function DataProvider({ children }) {
     hdfcAmountNow: hdfc.totals.amountNow,
     staffingRemainingLiability: staffingLiabilityUSD,
     staffingRemainingLiabilityINR: staffingLiabilityINR,
+
+    // Repaid & Progress
+    totalRepaidINR,
+    repaidPercentage,
+    remainingPercentage,
     staffingRepayments: staffing.totals?.totalRepayments || 0,
+    staffingRepaymentsINR: (staffing.totals?.totalRepayments || 0) * 95,
+    hdfcRepayments: hdfc.summary.repayment || 0,
+    jainRepayments: jain.totals.totalRepayments || 0,
+    usaRepayments: (jain.usaTotals?.totalRepayments || 0) * 95,
+
+    // Loan counts
     jainActiveLoans: jain.rows.length,
     usaActiveLoans: (jain.usaRows || []).length,
     hdfcActiveLoans: hdfc.rows.filter(r => r.amountNow > 0).length,

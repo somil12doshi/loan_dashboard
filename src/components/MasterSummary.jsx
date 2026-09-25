@@ -375,12 +375,251 @@ function OverviewCard({ title, combinedValue, jainValue, hdfcValue, items, icon,
   );
 }
 
+function TotalLoanLeftCard({ summaryData, usaLiabilityUSD, staffingLiabilityUSD }) {
+  const usaTotalINR = (summaryData.usaTotal || 5000) * 95;
+  const staffingTotalINR = (summaryData.staffingTotal || 9360) * 95;
+  const grandTotal = summaryData.grandTotalLoan || (summaryData.jainTotal + summaryData.hdfcTotal + usaTotalINR + staffingTotalINR);
+  const totalLeft = summaryData.totalRemainingLiability;
+  const totalRepaid = Math.max(0, grandTotal - totalLeft);
+  const pctLeft = grandTotal > 0 ? (totalLeft / grandTotal) * 100 : 0;
+  const pctRepaid = grandTotal > 0 ? (totalRepaid / grandTotal) * 100 : 0;
+
+  // Breakdown for the 4 sources
+  const jainLeft = summaryData.jainRemainingLiability || 0;
+  const jainTotal = summaryData.jainTotal || 0;
+  const jainRepaid = Math.max(0, jainTotal - jainLeft);
+  const jainPctPaid = jainTotal > 0 ? (jainRepaid / jainTotal) * 100 : 0;
+
+  const hdfcLeft = summaryData.hdfcAmountNow || 0;
+  const hdfcTotal = summaryData.hdfcTotal || 0;
+  const hdfcRepaid = Math.max(0, hdfcTotal - hdfcLeft);
+  const hdfcPctPaid = hdfcTotal > 0 ? (hdfcRepaid / hdfcTotal) * 100 : 0;
+
+  const usaLeft = (summaryData.usaRemainingLiability || usaLiabilityUSD) * 95;
+  const usaRepaid = Math.max(0, usaTotalINR - usaLeft);
+  const usaPctPaid = usaTotalINR > 0 ? (usaRepaid / usaTotalINR) * 100 : 0;
+
+  const staffingLeft = (summaryData.staffingRemainingLiability || staffingLiabilityUSD) * 95;
+  const staffingRepaid = Math.max(0, staffingTotalINR - staffingLeft);
+  const staffingPctPaid = staffingTotalINR > 0 ? (staffingRepaid / staffingTotalINR) * 100 : 0;
+
+  const chartData = [
+    { name: 'Total Loan Left', value: totalLeft, fill: '#6366f1' },
+    { name: 'Total Repaid', value: totalRepaid, fill: '#10b981' },
+  ];
+
+  const sourceItems = [
+    {
+      name: 'JAIN TRUST (INDIA)',
+      sub: '₹25,50,000 Sanctioned',
+      left: jainLeft,
+      total: jainTotal,
+      repaid: jainRepaid,
+      pctPaid: jainPctPaid,
+      color: COLORS.jain,
+      icon: '🏛️',
+    },
+    {
+      name: 'HDFC BANK',
+      sub: '₹21,50,000 Sanctioned',
+      left: hdfcLeft,
+      total: hdfcTotal,
+      repaid: hdfcRepaid,
+      pctPaid: hdfcPctPaid,
+      color: COLORS.hdfc,
+      icon: '🏦',
+    },
+    {
+      name: 'USA LOAN ($5,000)',
+      sub: '$5,000 USD',
+      left: usaLeft,
+      total: usaTotalINR,
+      repaid: usaRepaid,
+      pctPaid: usaPctPaid,
+      color: COLORS.amber,
+      icon: '🇺🇸',
+    },
+    {
+      name: 'STAFFING ($9,360)',
+      sub: '$9,360 USD',
+      left: staffingLeft,
+      total: staffingTotalINR,
+      repaid: staffingRepaid,
+      pctPaid: staffingPctPaid,
+      color: COLORS.pink,
+      icon: '💼',
+    },
+  ];
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.1 }}
+      className="glass-card p-6 lg:p-7 relative overflow-hidden space-y-6"
+      style={{
+        background: 'radial-gradient(ellipse at top right, rgba(99, 102, 241, 0.12), rgba(6, 9, 28, 0.85) 70%)',
+        border: '1px solid rgba(255, 255, 255, 0.12)',
+      }}
+    >
+      {/* Main Chart + Stats Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+        {/* Left: Donut Chart Indicator */}
+        <div className="lg:col-span-5 flex flex-col items-center justify-center relative min-h-[220px]">
+          <div className="w-full h-[220px] relative">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={chartData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={65}
+                  outerRadius={95}
+                  startAngle={90}
+                  endAngle={-270}
+                  paddingAngle={3}
+                  dataKey="value"
+                >
+                  {chartData.map((e, i) => (
+                    <Cell key={i} fill={e.fill} stroke="transparent" />
+                  ))}
+                </Pie>
+                <Tooltip content={<CustomTooltip />} />
+              </PieChart>
+            </ResponsiveContainer>
+
+            {/* Inner Center Readout */}
+            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center px-4">
+              <span className="text-[10px] uppercase tracking-widest font-bold text-white/50">
+                Total Loan Left
+              </span>
+              <span className="text-xl font-extrabold text-white tracking-tight mt-0.5">
+                {fmt(totalLeft)}
+              </span>
+              <span className="text-xs font-semibold text-indigo-400">
+                {pctLeft.toFixed(1)}% Remaining
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-6 mt-1 text-xs">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-indigo-500" />
+              <span className="text-white/70">Loan Left: <strong className="text-white">{pctLeft.toFixed(1)}%</strong></span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+              <span className="text-white/70">Repaid: <strong className="text-emerald-400">{pctRepaid.toFixed(1)}%</strong></span>
+            </div>
+          </div>
+        </div>
+
+        {/* Right: Summary Metrics & Big Progress Bar */}
+        <div className="lg:col-span-7 space-y-4">
+          {/* Big Summary Stats Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="p-3.5 rounded-xl bg-white/[0.03] border border-white/5">
+              <span className="text-[10px] font-semibold text-white/40 uppercase tracking-wider block mb-1">
+                Total Sanctioned Loan
+              </span>
+              <p className="text-lg font-bold text-white tracking-tight">
+                {fmt(grandTotal)}
+              </p>
+              <span className="text-[10px] text-white/40">100% Initial</span>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20">
+              <span className="text-[10px] font-semibold text-indigo-300 uppercase tracking-wider block mb-1">
+                Total Loan Left
+              </span>
+              <p className="text-lg font-bold text-indigo-300 tracking-tight">
+                {fmt(totalLeft)}
+              </p>
+              <span className="text-[10px] text-indigo-400/80 font-medium">{pctLeft.toFixed(1)}% to clear</span>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+              <span className="text-[10px] font-semibold text-emerald-300 uppercase tracking-wider block mb-1">
+                Total Paid Off
+              </span>
+              <p className="text-lg font-bold text-emerald-300 tracking-tight">
+                {fmt(totalRepaid)}
+              </p>
+              <span className="text-[10px] text-emerald-400/80 font-medium">{pctRepaid.toFixed(1)}% cleared</span>
+            </div>
+          </div>
+
+          {/* Master Progress Bar */}
+          <div className="space-y-1.5 pt-1">
+            <div className="flex justify-between text-xs font-semibold text-white/60">
+              <span>Overall Payoff Progress</span>
+              <span className="text-emerald-400">{pctRepaid.toFixed(1)}% Repaid ({fmt(totalRepaid)} of {fmt(grandTotal)})</span>
+            </div>
+            <div className="h-3 w-full rounded-full bg-white/10 overflow-hidden flex p-0.5 border border-white/10">
+              <div
+                style={{ width: `${pctRepaid}%` }}
+                className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-500 shadow-sm"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom: 4-Source Mini Progress Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2">
+        {sourceItems.map((item, idx) => (
+          <div
+            key={idx}
+            className="p-3.5 rounded-xl bg-white/[0.02] border border-white/5 relative overflow-hidden hover:border-white/20 transition-all"
+          >
+            <div className="flex items-center justify-between gap-1 mb-1.5">
+              <span className="text-[11px] font-bold text-white/80 flex items-center gap-1 truncate">
+                <span>{item.icon}</span>
+                {item.name}
+              </span>
+              <span className="text-[10px] font-bold px-1.5 py-0.2 rounded" style={{ color: item.color, backgroundColor: `${item.color}15` }}>
+                {item.pctPaid.toFixed(0)}% Paid
+              </span>
+            </div>
+
+            <div className="flex items-baseline justify-between mb-2">
+              <div>
+                <span className="text-[9px] uppercase tracking-wider text-white/40 block">Loan Left</span>
+                <span className="text-sm font-bold text-white">{fmt(item.left)}</span>
+              </div>
+              <div className="text-right">
+                <span className="text-[9px] uppercase tracking-wider text-white/40 block">Sanctioned</span>
+                <span className="text-xs font-semibold text-white/60">{fmt(item.total)}</span>
+              </div>
+            </div>
+
+            {/* Micro Progress Bar */}
+            <div className="h-1.5 w-full rounded-full bg-white/10 overflow-hidden">
+              <div
+                style={{ width: `${Math.max(item.pctPaid, item.left > 0 ? 0 : 100)}%`, backgroundColor: item.color }}
+                className="h-full rounded-full transition-all duration-500"
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+    </motion.div>
+  );
+}
+
 export default function MasterSummary() {
   const { summaryData, jain, hdfc, staffing } = useData();
   const usaLiabilityUSD = jain.usaTotals?.remainingLiability || 5000;
   const staffingLiabilityUSD = staffing?.totals?.remainingLiability || 7860;
+  const usaTotalUSD = jain.usaTotals?.total || 5000;
+  const staffingTotalUSD = staffing?.totals?.total || 9360;
+
   const usaLiabilityINR = usaLiabilityUSD * 95;
   const staffingLiabilityINR = staffingLiabilityUSD * 95;
+  const usaTotalINR = usaTotalUSD * 95;
+  const staffingTotalINR = staffingTotalUSD * 95;
+
+  const grandTotalPrincipalINR = summaryData.grandTotalLoan || (summaryData.jainTotal + summaryData.hdfcTotal + usaTotalINR + staffingTotalINR);
 
   // 4 distinct colors for all 4 loans:
   // 1. Jain Trust (India): Cyan (#06b6d4)
@@ -394,16 +633,26 @@ export default function MasterSummary() {
     { name: 'STAFFING', value: staffingLiabilityINR, color: COLORS.pink },
   ];
 
+  const totalPrincipalItems = [
+    { name: 'JAIN TRUST', value: summaryData.jainTotal, color: COLORS.jain },
+    { name: 'HDFC', value: summaryData.hdfcTotal, color: COLORS.hdfc },
+    { name: 'USA LOAN', value: usaTotalINR, color: COLORS.amber },
+    { name: 'STAFFING', value: staffingTotalINR, color: COLORS.pink },
+  ];
+
+  // All 4 sources included in Loan Source Distribution
   const loanDistribution = [
     { name: 'JAIN India', value: summaryData.jainTotal, fill: COLORS.jain },
     { name: 'HDFC', value: summaryData.hdfcTotal, fill: COLORS.hdfc },
-  ];
+    { name: 'USA Loan', value: usaTotalINR, fill: COLORS.amber },
+    { name: 'Staffing', value: staffingTotalINR, fill: COLORS.pink },
+  ].filter(item => item.value > 0);
 
   const remainingBreakdown = [
     { name: 'JAIN India', value: summaryData.jainRemainingLiability, fill: COLORS.jain },
     { name: 'HDFC Amount Now', value: summaryData.hdfcAmountNow, fill: COLORS.hdfc },
-    { name: 'USA Loan (INR)', value: usaLiabilityINR, fill: COLORS.amber },
-    { name: 'Staffing (INR)', value: staffingLiabilityINR, fill: COLORS.pink },
+    { name: 'USA Loan', value: usaLiabilityINR, fill: COLORS.amber },
+    { name: 'Staffing', value: staffingLiabilityINR, fill: COLORS.pink },
   ].filter(item => item.value > 0);
 
   return (
@@ -414,17 +663,24 @@ export default function MasterSummary() {
       className="space-y-10"
     >
       {/* Master Overview */}
-      <section className="space-y-4">
+      <section className="space-y-5">
         <SectionTitle title="Master Overview" sub="Combined financial position across all loan sources" />
+        
+        {/* Total Loan Left Payoff Card */}
+        <TotalLoanLeftCard
+          summaryData={summaryData}
+          usaLiabilityUSD={usaLiabilityUSD}
+          staffingLiabilityUSD={staffingLiabilityUSD}
+        />
         
         {/* Line 1: Main Overview Cards (2 Columns) */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <OverviewCard
-            title="Total Principal (INR)"
-            combinedValue={summaryData.totalCombinedLoan}
-            jainValue={summaryData.jainTotal}
-            hdfcValue={summaryData.hdfcTotal}
+            title="Total Principal & Loans (INR)"
+            combinedValue={grandTotalPrincipalINR}
+            items={totalPrincipalItems}
             icon="◈"
+            subtitle="Combined Loan Balance"
             colors={{ jain: COLORS.jain, hdfc: COLORS.hdfc, accent: COLORS.jain }}
             index={0}
           />
@@ -433,6 +689,7 @@ export default function MasterSummary() {
             combinedValue={summaryData.totalRemainingLiability}
             items={currentOutstandingItems}
             icon="◉"
+            subtitle="Total Loan Left"
             colors={{ jain: COLORS.jain, hdfc: COLORS.hdfc, accent: COLORS.hdfc }}
             index={1}
           />
@@ -456,6 +713,7 @@ export default function MasterSummary() {
             hdfcValue={0}
             customValue={'$' + usaLiabilityUSD.toLocaleString('en-US')}
             icon="$"
+            subtitle={`₹${(usaLiabilityUSD * 95).toLocaleString('en-IN')} INR`}
             colors={{ jain: COLORS.amber, hdfc: COLORS.amber, accent: COLORS.amber }}
             index={3}
           />
@@ -466,6 +724,7 @@ export default function MasterSummary() {
             hdfcValue={0}
             customValue={'$' + staffingLiabilityUSD.toLocaleString('en-US')}
             icon="💼"
+            subtitle={`₹${(staffingLiabilityUSD * 95).toLocaleString('en-IN')} INR`}
             colors={{ jain: COLORS.pink, hdfc: COLORS.pink, accent: COLORS.pink }}
             index={4}
           />
@@ -479,7 +738,7 @@ export default function MasterSummary() {
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="glass-card p-6">
           <h3 className="text-sm font-semibold text-white mb-1">Loan Source Distribution</h3>
-          <p className="text-xs mb-5" style={{ color: 'rgba(255,255,255,0.4)' }}>By original principal amount</p>
+          <p className="text-xs mb-5" style={{ color: 'rgba(255,255,255,0.4)' }}>By original total amount across all 4 sources</p>
           <ResponsiveContainer width="100%" height={240}>
             <PieChart>
               <Pie
@@ -503,7 +762,7 @@ export default function MasterSummary() {
 
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="glass-card p-6">
           <h3 className="text-sm font-semibold text-white mb-1">Remaining Liability Breakdown</h3>
-          <p className="text-xs mb-5" style={{ color: 'rgba(255,255,255,0.4)' }}>Current outstanding amounts</p>
+          <p className="text-xs mb-5" style={{ color: 'rgba(255,255,255,0.4)' }}>Current outstanding amounts across all sources</p>
           <ResponsiveContainer width="100%" height={240}>
             <PieChart>
               <Pie
@@ -525,7 +784,6 @@ export default function MasterSummary() {
           </ResponsiveContainer>
         </motion.div>
       </section>
-
 
     </motion.div>
   );
