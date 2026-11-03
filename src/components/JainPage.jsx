@@ -1,7 +1,9 @@
+import { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import StatCard from './StatCard';
 import SectionTitle from './SectionTitle';
 import { useData } from '../data/DataContext';
+import { sortRepaymentsLatestFirst } from '../utils/dateUtils';
 
 const fmtInr = n => '₹' + (n || 0).toLocaleString('en-IN');
 const fmtUsd = n => '$' + (n || 0).toLocaleString('en-US');
@@ -17,6 +19,9 @@ export default function JainPage() {
   const indiaAmount2025 = indiaRows.reduce((s, r) => s + (r.amount2025 || 0), 0);
   const indiaTotal = indiaAmount2024 + indiaAmount2025;
   const indiaRepaymentAmount = indiaRows.reduce((s, r) => s + (r.repaymentAmount || 0), 0);
+
+  const sortedIndiaRepayments = useMemo(() => sortRepaymentsLatestFirst(jain.repayments || []), [jain.repayments]);
+  const sortedUsaRepayments = useMemo(() => sortRepaymentsLatestFirst(jain.usaRepayments || []), [jain.usaRepayments]);
 
   return (
     <motion.div
@@ -148,7 +153,7 @@ export default function JainPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {(jain.repayments || []).map((row, i) => (
+                  {sortedIndiaRepayments.map((row, i) => (
                     <tr key={i}>
                       <td className="font-medium text-white">{row.trustName}</td>
                       <td className="text-white/60">{row.date}</td>
@@ -191,7 +196,7 @@ export default function JainPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {(jain.usaRepayments || []).map((row, i) => (
+                  {sortedUsaRepayments.map((row, i) => (
                     <tr key={i}>
                       <td className="font-medium text-white">{row.trustName}</td>
                       <td className="text-white/60">{row.date}</td>

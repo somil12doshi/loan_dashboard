@@ -695,17 +695,8 @@ export default function MasterSummary() {
           />
         </div>
 
-        {/* Line 2: Interest Remaining & International Liabilities (3 Columns) */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 pt-2">
-          <OverviewCard
-            title="Interest Remaining (INR)"
-            combinedValue={summaryData.hdfcInterestLeft}
-            hideProgressBar={true}
-            icon="%"
-            subtitle="HDFC Interest Left"
-            colors={{ jain: COLORS.green, hdfc: COLORS.green, accent: COLORS.green }}
-            index={2}
-          />
+        {/* Line 2: International Liabilities (2 Columns) */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-2">
           <OverviewCard
             title="USA Loan Remaining ($ USD)"
             combinedValue={0}
@@ -715,7 +706,7 @@ export default function MasterSummary() {
             icon="$"
             subtitle={`₹${(usaLiabilityUSD * 95).toLocaleString('en-IN')} INR`}
             colors={{ jain: COLORS.amber, hdfc: COLORS.amber, accent: COLORS.amber }}
-            index={3}
+            index={2}
           />
           <OverviewCard
             title="Staffing Remaining ($ USD)"
@@ -726,7 +717,7 @@ export default function MasterSummary() {
             icon="💼"
             subtitle={`₹${(staffingLiabilityUSD * 95).toLocaleString('en-IN')} INR`}
             colors={{ jain: COLORS.pink, hdfc: COLORS.pink, accent: COLORS.pink }}
-            index={4}
+            index={3}
           />
         </div>
       </section>

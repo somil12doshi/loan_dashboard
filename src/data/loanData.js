@@ -162,31 +162,32 @@ export const hdfcData = {
     { date: '23 Oct 2025', amount: 449140 },
     { date: '30 Mar 2026', amount: 350000 },
   ],
+  outstandingAmount: 1122092,
   totals: {
-    principle: 1000000,
-    amountNow: 1145884,
-    interest: 10803,
+    principle: 2150000,
+    amountNow: 1122092,
+    interest: 10716,
     interestPaid: 2050,
-    interestLeft: 8753,
+    interestLeft: 8666,
   },
   summary: {
     principleAndInterestLeft: 1008753,
-    repayment: 1150000,
+    repayment: 1250000,
     totalPrincipal: 2150000,
-    totalAmount: 2295884,
-    totalInterest: 145884,
+    totalAmount: 2372092,
+    totalInterest: 10716,
   },
 };
 
 // Derived combined summary values
 export const summaryData = {
   totalCombinedLoan: jainData.totals.total + hdfcData.summary.totalPrincipal,
-  totalRemainingLiability: jainData.totals.total + hdfcData.totals.amountNow,
+  totalRemainingLiability: jainData.totals.total + (hdfcData.outstandingAmount || hdfcData.totals.amountNow),
   jainTotal: jainData.totals.total,
   hdfcTotal: hdfcData.summary.totalPrincipal,
   jainRepayment: jainData.totals.repaymentAmount,
   hdfcInterestLeft: hdfcData.totals.interestLeft,
-  hdfcAmountNow: hdfcData.totals.amountNow,
+  hdfcAmountNow: hdfcData.outstandingAmount || hdfcData.totals.amountNow,
   jainActiveLoans: jainData.rows.length,
   hdfcActiveLoans: hdfcData.rows.filter(r => r.amountNow > 0).length,
 };

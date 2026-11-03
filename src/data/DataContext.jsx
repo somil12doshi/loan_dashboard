@@ -20,13 +20,25 @@ const cloneJain = () => {
   return cloned;
 };
 
-const cloneHdfc = () => ({
-  ...initialHdfc,
-  rows: initialHdfc.rows.map(r => ({ ...r })),
-  repayments: initialHdfc.repayments.map(r => ({ ...r })),
-  totals: { ...initialHdfc.totals },
-  summary: { ...initialHdfc.summary },
-});
+const cloneHdfc = () => {
+  const tableTotals = recalcHdfcTable(initialHdfc.rows);
+  const outstandingAmount = initialHdfc.outstandingAmount ?? (initialHdfc.totals?.amountNow ?? 1122092);
+  return {
+    ...initialHdfc,
+    rows: initialHdfc.rows.map(r => ({ ...r })),
+    repayments: initialHdfc.repayments.map(r => ({ ...r })),
+    outstandingAmount,
+    tableTotals,
+    totals: { 
+      ...initialHdfc.totals, 
+      amountNow: outstandingAmount 
+    },
+    summary: { 
+      ...initialHdfc.summary,
+      repayment: initialHdfc.summary?.repayment || 1250000,
+    },
+  };
+};
 
 const cloneStaffing = () => {
   const cloned = {
@@ -134,6 +146,13 @@ const loadHdfc = () => {
           return cleaned;
         });
       }
+      const outstandingAmount = data.outstandingAmount !== undefined 
+        ? data.outstandingAmount 
+        : (data.totals?.amountNow ?? 1122092);
+      data.outstandingAmount = outstandingAmount;
+      if (!data.totals) data.totals = {};
+      data.totals.amountNow = outstandingAmount;
+      data.tableTotals = recalcHdfcTable(data.rows || []);
       return data;
     }
   } catch (e) {}
@@ -217,26 +236,40 @@ function recalcUsa(usaRows = [], usaRepayments = []) {
   };
 }
 
-// Recalculate HDFC totals + summary from rows (mirrors Excel formulas)
-function recalcHdfc(rows, repayments) {
+// Calculate table-only totals from rows
+function recalcHdfcTable(rows = []) {
   const principle = rows.reduce((s, r) => s + (r.principle || 0), 0);
   const amountNow = rows.reduce((s, r) => s + (r.amountNow || 0), 0);
   const interest = rows.reduce((s, r) => s + (r.interest || 0), 0);
   const interestPaid = rows.reduce((s, r) => s + (r.interestPaid || 0), 0);
   const interestLeft = rows.reduce((s, r) => s + (r.interestLeft || 0), 0); // G = D - E per row
+  return { principle, amountNow, interest, interestPaid, interestLeft };
+}
 
-  const totalPrincipal = rows.reduce((s, r) => s + (r.principle || 0), 0) + repayments.reduce((s, r) => s + r.amount, 0);
+// Recalculate HDFC totals + summary. The main amountNow is decoupled from table rows!
+function recalcHdfc(rows, repayments, customOutstandingAmount) {
+  const table = recalcHdfcTable(rows);
   const repayment = repayments.reduce((s, r) => s + r.amount, 0);
-  // Simple approximation for total interest in HDFC summary
+  const totalPrincipal = 2150000; // Fixed as per Excel summary logic
   const totalInterest = rows.reduce((s, r) => s + (r.interest || 0), 0);
 
+  // The main outstanding amount is decoupled from table rows
+  const amountNow = customOutstandingAmount !== undefined ? customOutstandingAmount : 1122092;
+
   return {
-    totals: { principle, amountNow, interest, interestPaid, interestLeft },
+    tableTotals: table,
+    totals: { 
+      principle: table.principle, 
+      amountNow, 
+      interest: table.interest, 
+      interestPaid: table.interestPaid, 
+      interestLeft: table.interestLeft 
+    },
     summary: {
-      principleAndInterestLeft: principle + interestLeft,
-      repayment,
-      totalPrincipal: 2150000, // Fixed as per Excel summary logic
-      totalAmount: amountNow + repayment,
+      principleAndInterestLeft: table.principle + table.interestLeft,
+      repayment: repayment || 1250000,
+      totalPrincipal,
+      totalAmount: amountNow + (repayment || 1250000),
       totalInterest,
     },
   };
@@ -312,9 +345,14 @@ export function DataProvider({ children }) {
 
         if (hdfcSnap.exists()) {
           loadedHdfc = hdfcSnap.data();
-          // Ensure structure and recalculate
           if (!loadedHdfc.repayments) loadedHdfc.repayments = [];
-          const { totals, summary } = recalcHdfc(loadedHdfc.rows, loadedHdfc.repayments);
+          const currentOutstanding = loadedHdfc.outstandingAmount !== undefined 
+            ? loadedHdfc.outstandingAmount 
+            : (loadedHdfc.totals?.amountNow ?? 1122092);
+          loadedHdfc.outstandingAmount = currentOutstanding;
+
+          const { totals, summary, tableTotals } = recalcHdfc(loadedHdfc.rows, loadedHdfc.repayments, currentOutstanding);
+          loadedHdfc.tableTotals = tableTotals;
           loadedHdfc.totals = totals;
           loadedHdfc.summary = summary;
           setHdfc(loadedHdfc);
@@ -351,6 +389,7 @@ export function DataProvider({ children }) {
         ...currentJain,
         rows: (currentJain.rows || []).filter(r => !r.trustName.includes('USA') && !r.trustName.includes('5000'))
       };
+      const activeHdfc = currentHdfc || hdfc;
       const activeStaffing = currentStaffing || staffing;
       if (isFirebaseConfigured && db) {
         const jainRef = doc(db, 'loans', 'jain');
@@ -358,15 +397,16 @@ export function DataProvider({ children }) {
         const staffingRef = doc(db, 'loans', 'staffing');
         await Promise.all([
           setDoc(jainRef, sanitizedJain),
-          setDoc(hdfcRef, currentHdfc),
+          setDoc(hdfcRef, activeHdfc),
           setDoc(staffingRef, activeStaffing)
         ]);
       }
       // Always save to localStorage as a fast local cache & backup
       localStorage.setItem('loanData_jain', JSON.stringify(sanitizedJain));
-      localStorage.setItem('loanData_hdfc', JSON.stringify(currentHdfc));
+      localStorage.setItem('loanData_hdfc', JSON.stringify(activeHdfc));
       localStorage.setItem('loanData_staffing', JSON.stringify(activeStaffing));
       setJain(sanitizedJain);
+      setHdfc(activeHdfc);
       setStaffing(activeStaffing);
       setIsDirty(false);
     } catch (err) {
@@ -484,8 +524,9 @@ export function DataProvider({ children }) {
     setHdfc(prev => {
       const rows = prev.rows.map((r, i) => i === rowIndex ? { ...r, [field]: value } : r);
       const recalculated = recalcHdfcRows(rows);
-      const { totals, summary } = recalcHdfc(recalculated, prev.repayments);
-      return { ...prev, rows: recalculated, totals, summary };
+      const currentOutstanding = prev.outstandingAmount !== undefined ? prev.outstandingAmount : (prev.totals?.amountNow ?? 1122092);
+      const { totals, summary, tableTotals } = recalcHdfc(recalculated, prev.repayments, currentOutstanding);
+      return { ...prev, rows: recalculated, tableTotals, totals, summary, outstandingAmount: currentOutstanding };
     });
     setIsDirty(true);
   }, []);
@@ -501,9 +542,18 @@ export function DataProvider({ children }) {
   const updateHdfcRepayment = useCallback((rowIndex, field, rawValue) => {
     const value = rawValue === '' || rawValue == null ? 0 : Number(rawValue);
     setHdfc(prev => {
+      const oldAmount = prev.repayments[rowIndex]?.amount || 0;
       const repayments = prev.repayments.map((r, i) => i === rowIndex ? { ...r, [field]: value } : r);
-      const { totals, summary } = recalcHdfc(prev.rows, repayments);
-      return { ...prev, repayments, totals, summary };
+      let currentOutstanding = prev.outstandingAmount !== undefined ? prev.outstandingAmount : (prev.totals?.amountNow ?? 1122092);
+      
+      // Auto-adjust outstanding when repayment amount is edited
+      if (field === 'amount') {
+        const delta = value - oldAmount;
+        currentOutstanding = Math.max(0, currentOutstanding - delta);
+      }
+
+      const { totals, summary, tableTotals } = recalcHdfc(prev.rows, repayments, currentOutstanding);
+      return { ...prev, repayments, tableTotals, totals, summary, outstandingAmount: currentOutstanding };
     });
     setIsDirty(true);
   }, []);
@@ -517,21 +567,131 @@ export function DataProvider({ children }) {
   }, []);
 
   const addHdfcRepayment = useCallback((date, amount) => {
+    const paymentAmount = Number(amount) || 0;
     setHdfc(prev => {
-      const repayments = [...prev.repayments, { date, amount: Number(amount) || 0 }];
-      const { totals, summary } = recalcHdfc(prev.rows, repayments);
-      return { ...prev, repayments, totals, summary };
+      const repayments = [...prev.repayments, { date, amount: paymentAmount }];
+      const currentOutstanding = prev.outstandingAmount !== undefined ? prev.outstandingAmount : (prev.totals?.amountNow ?? 1122092);
+      // Auto-decrease outstanding by the payment amount
+      const nextOutstanding = Math.max(0, currentOutstanding - paymentAmount);
+      const { totals, summary, tableTotals } = recalcHdfc(prev.rows, repayments, nextOutstanding);
+      return { ...prev, repayments, tableTotals, totals, summary, outstandingAmount: nextOutstanding };
     });
     setIsDirty(true);
   }, []);
 
   const deleteHdfcRepayment = useCallback((rowIndex) => {
     setHdfc(prev => {
+      const deletedAmount = prev.repayments[rowIndex]?.amount || 0;
       const repayments = prev.repayments.filter((_, i) => i !== rowIndex);
-      const { totals, summary } = recalcHdfc(prev.rows, repayments);
-      return { ...prev, repayments, totals, summary };
+      const currentOutstanding = prev.outstandingAmount !== undefined ? prev.outstandingAmount : (prev.totals?.amountNow ?? 1122092);
+      // Restore outstanding when a repayment is deleted
+      const nextOutstanding = currentOutstanding + deletedAmount;
+      const { totals, summary, tableTotals } = recalcHdfc(prev.rows, repayments, nextOutstanding);
+      return { ...prev, repayments, tableTotals, totals, summary, outstandingAmount: nextOutstanding };
     });
     setIsDirty(true);
+  }, []);
+
+  const recordHdfcPayment = useCallback(async (date, amount) => {
+    const paymentAmount = Number(amount) || 0;
+    let nextHdfc = null;
+    setHdfc(prev => {
+      const repayments = [...prev.repayments, { date, amount: paymentAmount }];
+      const currentOutstanding = prev.outstandingAmount !== undefined ? prev.outstandingAmount : (prev.totals?.amountNow ?? 1122092);
+      const nextOutstanding = Math.max(0, currentOutstanding - paymentAmount);
+      const { totals, summary, tableTotals } = recalcHdfc(prev.rows, repayments, nextOutstanding);
+      nextHdfc = { ...prev, repayments, tableTotals, totals, summary, outstandingAmount: nextOutstanding };
+      return nextHdfc;
+    });
+
+    if (nextHdfc) {
+      try {
+        localStorage.setItem('loanData_hdfc', JSON.stringify(nextHdfc));
+        if (isFirebaseConfigured && db) {
+          const hdfcRef = doc(db, 'loans', 'hdfc');
+          await setDoc(hdfcRef, nextHdfc);
+        }
+        setIsDirty(false);
+      } catch (err) {
+        console.error('Error saving HDFC payment:', err);
+      }
+    }
+  }, []);
+
+  const deleteHdfcRepaymentDirectly = useCallback(async (rowIndex) => {
+    let nextHdfc = null;
+    setHdfc(prev => {
+      const deletedAmount = prev.repayments[rowIndex]?.amount || 0;
+      const repayments = prev.repayments.filter((_, i) => i !== rowIndex);
+      const currentOutstanding = prev.outstandingAmount !== undefined ? prev.outstandingAmount : (prev.totals?.amountNow ?? 1122092);
+      const nextOutstanding = currentOutstanding + deletedAmount;
+      const { totals, summary, tableTotals } = recalcHdfc(prev.rows, repayments, nextOutstanding);
+      nextHdfc = { ...prev, repayments, tableTotals, totals, summary, outstandingAmount: nextOutstanding };
+      return nextHdfc;
+    });
+
+    if (nextHdfc) {
+      try {
+        localStorage.setItem('loanData_hdfc', JSON.stringify(nextHdfc));
+        if (isFirebaseConfigured && db) {
+          const hdfcRef = doc(db, 'loans', 'hdfc');
+          await setDoc(hdfcRef, nextHdfc);
+        }
+        setIsDirty(false);
+      } catch (err) {
+        console.error('Error deleting HDFC payment:', err);
+      }
+    }
+  }, []);
+
+  const updateHdfcOutstandingAmount = useCallback((rawValue) => {
+    const val = rawValue === '' || rawValue == null ? 0 : Number(rawValue);
+    setHdfc(prev => {
+      const updatedTotals = { ...prev.totals, amountNow: val };
+      const updatedSummary = {
+        ...prev.summary,
+        totalAmount: val + (prev.summary?.repayment || 0),
+      };
+      return {
+        ...prev,
+        outstandingAmount: val,
+        totals: updatedTotals,
+        summary: updatedSummary,
+      };
+    });
+    setIsDirty(true);
+  }, []);
+
+  const saveHdfcOutstandingAmount = useCallback(async (rawValue) => {
+    const val = rawValue === '' || rawValue == null ? 0 : Number(rawValue);
+    let nextHdfc = null;
+    setHdfc(prev => {
+      const updatedTotals = { ...prev.totals, amountNow: val };
+      const updatedSummary = {
+        ...prev.summary,
+        totalAmount: val + (prev.summary?.repayment || 0),
+      };
+      nextHdfc = {
+        ...prev,
+        outstandingAmount: val,
+        totals: updatedTotals,
+        summary: updatedSummary,
+      };
+      return nextHdfc;
+    });
+
+    if (nextHdfc) {
+      try {
+        localStorage.setItem('loanData_hdfc', JSON.stringify(nextHdfc));
+        if (isFirebaseConfigured && db) {
+          const hdfcRef = doc(db, 'loans', 'hdfc');
+          await setDoc(hdfcRef, nextHdfc);
+        }
+        setIsDirty(false);
+      } catch (err) {
+        console.error('Error saving HDFC outstanding amount:', err);
+      }
+    }
   }, []);
 
   const updateStaffingRow = useCallback((rowIndex, field, rawValue) => {
@@ -628,10 +788,11 @@ export function DataProvider({ children }) {
   const staffingTotalUSD = staffing.totals?.total || 9360;
   const usaTotalINR = usaTotalUSD * 95;
   const staffingTotalINR = staffingTotalUSD * 95;
+  const hdfcOutstanding = hdfc.outstandingAmount !== undefined ? hdfc.outstandingAmount : (hdfc.totals?.amountNow ?? 1122092);
   const indiaPrincipalTotal = jain.totals.total + hdfc.summary.totalPrincipal;
   const grandTotalLoan = indiaPrincipalTotal + usaTotalINR + staffingTotalINR;
 
-  const totalOutstandingINR = jain.totals.remainingLiability + hdfc.totals.amountNow + usaLiabilityINR + staffingLiabilityINR;
+  const totalOutstandingINR = jain.totals.remainingLiability + hdfcOutstanding + usaLiabilityINR + staffingLiabilityINR;
   const totalRepaidINR = Math.max(0, grandTotalLoan - totalOutstandingINR);
   const repaidPercentage = grandTotalLoan > 0 ? (totalRepaidINR / grandTotalLoan) * 100 : 0;
   const remainingPercentage = grandTotalLoan > 0 ? (totalOutstandingINR / grandTotalLoan) * 100 : 0;
@@ -651,14 +812,14 @@ export function DataProvider({ children }) {
     hdfcTotal: hdfc.summary.totalPrincipal,
 
     // Outstanding / Remaining
-    totalRemainingLiability: totalOutstandingINR, // ₹48,93,792 (Total loan left)
+    totalRemainingLiability: totalOutstandingINR, // Total loan left
     totalLoanLeft: totalOutstandingINR,
     jainRemainingLiability: jain.totals.remainingLiability,
     usaRemainingLiability: usaLiabilityUSD,
     usaRemainingLiabilityINR: usaLiabilityINR,
     hdfcTotalPrincipal: hdfc.summary.totalPrincipal,
     hdfcInterestLeft: hdfc.totals.interestLeft,
-    hdfcAmountNow: hdfc.totals.amountNow,
+    hdfcAmountNow: hdfcOutstanding,
     staffingRemainingLiability: staffingLiabilityUSD,
     staffingRemainingLiabilityINR: staffingLiabilityINR,
 
@@ -668,7 +829,7 @@ export function DataProvider({ children }) {
     remainingPercentage,
     staffingRepayments: staffing.totals?.totalRepayments || 0,
     staffingRepaymentsINR: (staffing.totals?.totalRepayments || 0) * 95,
-    hdfcRepayments: hdfc.summary.repayment || 0,
+    hdfcRepayments: hdfc.summary.repayment || 1250000,
     jainRepayments: jain.totals.totalRepayments || 0,
     usaRepayments: (jain.usaTotals?.totalRepayments || 0) * 95,
 
@@ -686,8 +847,10 @@ export function DataProvider({ children }) {
       updateJainRow, updateJainRowText,
       updateUsaRow, updateUsaRowText,
       updateHdfcRow, updateHdfcRowText,
+      updateHdfcOutstandingAmount, saveHdfcOutstandingAmount,
       updateHdfcRepayment, updateHdfcRepaymentText,
       addHdfcRepayment, deleteHdfcRepayment,
+      recordHdfcPayment, deleteHdfcRepaymentDirectly,
       updateJainRepayment, updateJainRepaymentText,
       addJainRepayment, deleteJainRepayment,
       updateUsaRepayment, updateUsaRepaymentText,

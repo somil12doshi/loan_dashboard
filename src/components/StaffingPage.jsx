@@ -1,7 +1,9 @@
+import { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import StatCard from './StatCard';
 import SectionTitle from './SectionTitle';
 import { useData } from '../data/DataContext';
+import { sortRepaymentsLatestFirst } from '../utils/dateUtils';
 
 const fmtUSD = n => '$' + (n || 0).toLocaleString('en-US');
 const COLORS = { purple: '#a855f7', amber: '#fbbf24', green: '#34d399', pink: '#f43f5e' };
@@ -12,6 +14,8 @@ export default function StaffingPage() {
   const totalAmount = staffing?.totals?.total || 9360;
   const totalRepaid = staffing?.totals?.totalRepayments || 0;
   const remainingLiability = staffing?.totals?.remainingLiability || totalAmount;
+
+  const sortedRepayments = useMemo(() => sortRepaymentsLatestFirst(staffing?.repayments || []), [staffing?.repayments]);
 
   return (
     <motion.div
@@ -90,9 +94,9 @@ export default function StaffingPage() {
       <section className="space-y-4">
         <SectionTitle title="Repayment Log ($ USD)" sub="Past installments paid towards Staffing" accent={COLORS.green} />
         <div className="glass-card p-6 border border-white/10">
-          {staffing?.repayments && staffing.repayments.length > 0 ? (
+          {sortedRepayments && sortedRepayments.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {staffing.repayments.map((r, i) => (
+              {sortedRepayments.map((r, i) => (
                 <div key={i} className="p-4 rounded-xl bg-white/5 border border-white/10 space-y-1">
                   <p className="text-[10px] font-bold uppercase tracking-wider text-purple-400">{r.payment || 'Installment'}</p>
                   <p className="text-xs text-white/50">{r.date || '—'}</p>

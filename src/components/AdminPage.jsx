@@ -200,6 +200,7 @@ export default function AdminPage() {
     updateJainRow, updateJainRowText,
     updateUsaRow, updateUsaRowText,
     updateHdfcRow, updateHdfcRowText,
+    updateHdfcOutstandingAmount,
     updateHdfcRepayment, updateHdfcRepaymentText,
     addHdfcRepayment, deleteHdfcRepayment,
     updateJainRepayment, updateJainRepaymentText,
@@ -397,11 +398,47 @@ export default function AdminPage() {
         </div>
       </section>
 
+      {/* HDFC OUTSTANDING AMOUNT EDITOR */}
+      <section className="space-y-4">
+        <div className="glass-card p-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="w-2 h-2 rounded-full bg-indigo-500 shadow-sm shadow-indigo-500/50" />
+                <h3 className="text-sm font-bold uppercase tracking-wider text-indigo-400">
+                  HDFC Total Outstanding Amount
+                </h3>
+              </div>
+              <p className="text-xs text-white/50">
+                Directly controls the HDFC outstanding amount across all pages. Not linked to the tranche rows below.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-amber-400">₹</span>
+                <input
+                  type="number"
+                  value={hdfc.outstandingAmount !== undefined ? hdfc.outstandingAmount : (hdfc.totals?.amountNow ?? '')}
+                  onChange={e => updateHdfcOutstandingAmount(e.target.value)}
+                  className="w-48 pl-7 pr-3 py-2 bg-white/5 border border-white/10 rounded-xl text-white font-bold text-base outline-none focus:border-indigo-500 transition-colors"
+                  placeholder="Outstanding amount"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* HDFC EDITOR */}
       <section className="space-y-4">
-        <h3 className="text-sm font-bold uppercase tracking-widest text-indigo-400 flex items-center gap-2">
-          HDFC Tranche Rows
-        </h3>
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-bold uppercase tracking-widest text-indigo-400 flex items-center gap-2">
+            HDFC Tranche Rows
+          </h3>
+          <span className="text-[10px] font-medium text-white/40 border border-white/10 px-2.5 py-0.5 rounded-full">
+            Reference only • Unlinked from main total
+          </span>
+        </div>
         <div className="glass-card overflow-hidden">
           <div className="overflow-x-auto">
             <table className="loan-table">
