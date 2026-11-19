@@ -193,22 +193,24 @@ export const summaryData = {
 };
 
 export const staffingData = {
-  title: 'Total Amount Payable (12%): $9,360',
-  totalAmountPayable: 9360,
+  title: 'Total Amount Payable (12%): $11,980',
+  totalAmountPayable: 11980,
   rate: '12%',
   headers: ['Payment', 'Amount'],
   rows: [
     { payment: 'Offer Letter – Now', amount: 1500, date: '19 Sep 2026', status: 'Paid' },
-    { payment: 'Installment 2', amount: 2620, date: null, status: 'Pending' },
+    { payment: 'Installment 2', amount: 2620, date: '4 Nov 2026', status: 'Paid' },
     { payment: 'Installment 3', amount: 2620, date: null, status: 'Pending' },
     { payment: 'Installment 4', amount: 2620, date: null, status: 'Pending' },
+    { payment: 'Installment 5', amount: 2620, date: null, status: 'Pending' },
   ],
   repayments: [
     { payment: 'Offer Letter – Now', date: '19 Sep 2026', amount: 1500 },
+    { payment: 'Installment 2', date: '4 Nov 2026', amount: 2620 },
   ],
   totals: {
-    total: 9360,
-    totalRepayments: 1500,
+    total: 11980,
+    totalRepayments: 4120,
     remainingLiability: 7860,
   },
 };

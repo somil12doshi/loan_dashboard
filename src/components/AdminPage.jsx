@@ -208,6 +208,7 @@ export default function AdminPage() {
     updateUsaRepayment, updateUsaRepaymentText,
     addUsaRepayment, deleteUsaRepayment,
     updateStaffingRow, updateStaffingRowText,
+    addStaffingRow, deleteStaffingRow,
     updateStaffingRepayment, updateStaffingRepaymentText,
     addStaffingRepayment, deleteStaffingRepayment,
     saveToLocalStorage,
@@ -683,9 +684,20 @@ export default function AdminPage() {
 
       {/* STAFFING ROWS EDITOR */}
       <section className="space-y-4">
-        <h3 className="text-sm font-bold uppercase tracking-widest text-purple-400 flex items-center gap-2">
-          💼 Staffing Payment Rows ($ USD)
-        </h3>
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-bold uppercase tracking-widest text-purple-400 flex items-center gap-2">
+            💼 Staffing Payment Rows ($ USD)
+          </h3>
+          <button
+            onClick={() => {
+              const nextNum = (staffing?.rows || []).length + 1;
+              addStaffingRow(`Installment ${nextNum}`, 2620);
+            }}
+            className="px-3 py-1.5 rounded-lg bg-purple-500/10 border border-purple-500/20 text-[10px] font-bold uppercase tracking-wider text-purple-300 hover:bg-purple-500/20 transition-all flex items-center gap-1.5 cursor-pointer"
+          >
+            + Add Installment
+          </button>
+        </div>
         <div className="glass-card overflow-hidden border border-purple-500/20">
           <div className="overflow-x-auto">
             <table className="loan-table">
@@ -693,6 +705,7 @@ export default function AdminPage() {
                 <tr>
                   <th>Payment Milestone</th>
                   <th style={{ color: '#c084fc' }}>Amount ($)</th>
+                  <th style={{ width: '10%', textAlign: 'center' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -703,6 +716,15 @@ export default function AdminPage() {
                     </td>
                     <td>
                       <EditCell value={row.amount} onSave={v => updateStaffingRow(i, 'amount', v)} />
+                    </td>
+                    <td style={{ textAlign: 'center' }}>
+                      <button
+                        onClick={() => deleteStaffingRow(i)}
+                        className="p-1 rounded text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors"
+                        title="Delete Installment Row"
+                      >
+                        🗑
+                      </button>
                     </td>
                   </tr>
                 ))}

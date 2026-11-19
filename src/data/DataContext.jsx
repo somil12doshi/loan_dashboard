@@ -84,7 +84,7 @@ const HDFC_SIGNATURE = JSON.stringify({
   }))
 });
 
-const STAFFING_SIGNATURE = "v2_staffing_repaid_1500_" + JSON.stringify({
+const STAFFING_SIGNATURE = "v3_staffing_installment_5_" + JSON.stringify({
   rows: initialStaffing.rows,
   repayments: initialStaffing.repayments
 });
@@ -744,6 +744,25 @@ export function DataProvider({ children }) {
     setIsDirty(true);
   }, []);
 
+  const addStaffingRow = useCallback((payment, amount) => {
+    setStaffing(prev => {
+      const nextNum = (prev.rows || []).length + 1;
+      const defaultName = payment || `Installment ${nextNum}`;
+      const defaultAmount = Number(amount) || 2620;
+      const rows = [...(prev.rows || []), { payment: defaultName, amount: defaultAmount, date: null, status: 'Pending' }];
+      return { ...prev, rows, totals: recalcStaffing(rows, prev.repayments) };
+    });
+    setIsDirty(true);
+  }, []);
+
+  const deleteStaffingRow = useCallback((rowIndex) => {
+    setStaffing(prev => {
+      const rows = (prev.rows || []).filter((_, i) => i !== rowIndex);
+      return { ...prev, rows, totals: recalcStaffing(rows, prev.repayments) };
+    });
+    setIsDirty(true);
+  }, []);
+
   const resetAll = useCallback(async () => {
     if (!window.confirm("Are you sure you want to reset all data back to the initial Excel data? This will overwrite the cloud database and your local cache.")) {
       return;
@@ -856,6 +875,7 @@ export function DataProvider({ children }) {
       updateUsaRepayment, updateUsaRepaymentText,
       addUsaRepayment, deleteUsaRepayment,
       updateStaffingRow, updateStaffingRowText,
+      addStaffingRow, deleteStaffingRow,
       updateStaffingRepayment, updateStaffingRepaymentText,
       addStaffingRepayment, deleteStaffingRepayment,
       saveToLocalStorage,

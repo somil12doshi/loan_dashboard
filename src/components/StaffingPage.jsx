@@ -25,7 +25,7 @@ export default function StaffingPage() {
     >
       <SectionTitle 
         title="Staffing Loan Details" 
-        sub="Total Amount Payable (12%): $9,360 USD"
+        sub={`Total Amount Payable (12%): ${fmtUSD(totalAmount)} USD`}
         accent={COLORS.purple}
       />
 
@@ -42,10 +42,10 @@ export default function StaffingPage() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-1">
           <h3 className="text-base font-bold text-white flex items-center gap-2">
             <span>Total Amount Payable (12%):</span>
-            <span className="text-purple-400 font-extrabold">$9,360</span>
+            <span className="text-purple-400 font-extrabold">{fmtUSD(totalAmount)}</span>
           </h3>
           <span className="text-xs text-white/50 bg-white/5 border border-white/10 px-3 py-1 rounded-full w-fit">
-            4 Installments Breakdown
+            {(staffing?.rows || []).length} Installments Breakdown
           </span>
         </div>
 
